@@ -1,2 +1,5 @@
-# Roundest-Robin
-Proxy Based Load Balancer for Capstone Project of Lets Get Rusty Bootcamp
+# Roundest Robin
+
+**Proxy Based Load Balancer** for Capstone Project of Lets Get Rusty Bootcamp
+
+![image](docs/img/roundestrobin2.png)
