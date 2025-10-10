@@ -23,7 +23,7 @@ pub async fn signup(
     let uri = uri::Uri::from_static("http://example.com");
     let user = Endpoint::new(uri, email, password, request.requires_2fa);
 
-    let mut user_store = state.user_store.write().await;
+    let mut user_store = state.endpoint_store.write().await;
 
     if user_store.get_next_endpoint().await.is_ok() {
         return Err(AuthAPIError::UserAlreadyExists);
