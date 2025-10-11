@@ -15,6 +15,8 @@ use routes::{routeme, signup};
 use serde::{Deserialize, Serialize};
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
+use crate::domain::{Email, Endpoint};
+
 pub mod app_state;
 pub mod domain;
 pub mod routes;
@@ -32,6 +34,11 @@ impl Application {
             "http://localhost:8000".parse()?,
             "http://[YOUR_DROPLET_IP]:8000".parse()?,
         ];
+
+        let endpoint = Endpoint {
+            uri: "http://localhost:9000".parse()?,
+        };
+        app_state.endpoint_store.add_endpoint(endpoint).await;
 
         let cors = CorsLayer::new()
             .allow_methods([Method::GET, Method::POST])

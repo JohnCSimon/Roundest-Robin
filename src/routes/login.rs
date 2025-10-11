@@ -17,7 +17,7 @@ pub async fn routeme(
     State(state): State<AppState>,
     jar: CookieJar,
     request: Request<Body>,
-) -> (CookieJar, Result<impl IntoResponse, RouterError>) {
+) -> Result<impl IntoResponse, RouterError> {
     // let password = match Password::parse(request.password) {
     //     Ok(password) => password,
     //     Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
@@ -38,7 +38,7 @@ pub async fn routeme(
 
     let end_point = match endpoint_store.get_next_endpoint().await {
         Ok(end_point) => end_point,
-        Err(_) => return (jar, Err(RouterError::IncorrectCredentials)),
+        Err(_) => return Err(RouterError::IncorrectCredentials),
     };
 
     // Make HTTP request to the endpoint's URI
@@ -51,10 +51,10 @@ pub async fn routeme(
         .await
     {
         Ok(response) => response,
-        Err(_) => return (jar, Err(RouterError::UnexpectedError)),
+        Err(_) => return Err(RouterError::UnexpectedError),
     };
 
-    handle_no_2fa(&end_point.email, jar).await
+    return Ok((StatusCode::OK, Json(response.text().await.unwrap())));
 }
 
 async fn handle_no_2fa(

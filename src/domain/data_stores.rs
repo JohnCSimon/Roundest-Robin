@@ -4,10 +4,8 @@ use super::{Email, Endpoint, Password};
 
 #[async_trait::async_trait]
 pub trait EndpointStore {
-    async fn add_endpoint(&mut self, user: Endpoint) -> Result<(), UserStoreError>;
+    async fn add_endpoint(&mut self, endpoint: Endpoint) -> Result<(), UserStoreError>;
     async fn get_next_endpoint(&self) -> Result<Endpoint, UserStoreError>;
-    async fn validate_user(&self, email: &Email, password: &Password)
-        -> Result<(), UserStoreError>;
 }
 
 #[derive(Debug, PartialEq)]

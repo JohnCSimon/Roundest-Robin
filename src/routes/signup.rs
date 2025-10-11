@@ -8,20 +8,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{RouterError, Email, Endpoint, Password},
+    domain::{Email, Endpoint, Password, RouterError},
 };
 
 pub async fn signup(
     State(state): State<AppState>,
     Json(request): Json<SignupRequest>,
 ) -> Result<impl IntoResponse, RouterError> {
-    let email =
-        Email::parse(request.email.clone()).map_err(|_| RouterError::InvalidCredentials)?;
-    let password =
-        Password::parse(request.password.clone()).map_err(|_| RouterError::InvalidCredentials)?;
-
     let uri = uri::Uri::from_static("http://example.com");
-    let user = Endpoint::new(uri, email, password, request.requires_2fa);
+    let user = Endpoint::new(uri);
 
     let mut user_store = state.endpoint_store.write().await;
 
