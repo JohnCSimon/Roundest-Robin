@@ -1,4 +1,4 @@
-pub enum AuthAPIError {
+pub enum RouterError {
     UserAlreadyExists,
     InvalidCredentials,
     IncorrectCredentials,

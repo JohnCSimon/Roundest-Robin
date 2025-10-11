@@ -1,38 +1,60 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    body::Body,
+    extract::{Request, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
 use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, LoginAttemptId, Password, TwoFACode},
+    domain::{Email, Password, RouterError},
 };
 
-pub async fn login(
+pub async fn routeme(
     State(state): State<AppState>,
     jar: CookieJar,
-    Json(request): Json<LoginRequest>,
-) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
-    let password = match Password::parse(request.password) {
-        Ok(password) => password,
-        Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
+    request: Request<Body>,
+) -> (CookieJar, Result<impl IntoResponse, RouterError>) {
+    // let password = match Password::parse(request.password) {
+    //     Ok(password) => password,
+    //     Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
+    // };
+
+    // let email = match Email::parse(request.email) {
+    //     Ok(email) => email,
+    //     Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
+    // };
+
+    // if user_store.validate_user(&email, &password).await.is_err() {
+    //     return (jar, Err(AuthAPIError::IncorrectCredentials));
+    // }
+
+    print!("Routeme called with request: {}\n", request.uri());
+
+    let endpoint_store = &state.endpoint_store.read().await;
+
+    let end_point = match endpoint_store.get_next_endpoint().await {
+        Ok(end_point) => end_point,
+        Err(_) => return (jar, Err(RouterError::IncorrectCredentials)),
     };
 
-    let email = match Email::parse(request.email) {
-        Ok(email) => email,
-        Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
+    // Make HTTP request to the endpoint's URI
+    let client = reqwest::Client::new();
+
+    let response = match client
+        .get(end_point.uri.to_string())
+        // .json(&request) // Forward the login request
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(_) => return (jar, Err(RouterError::UnexpectedError)),
     };
 
-    let user_store = &state.endpoint_store.read().await;
-
-    if user_store.validate_user(&email, &password).await.is_err() {
-        return (jar, Err(AuthAPIError::IncorrectCredentials));
-    }
-
-    let user = match user_store.get_next_endpoint().await {
-        Ok(user) => user,
-        Err(_) => return (jar, Err(AuthAPIError::IncorrectCredentials)),
-    };
-    handle_no_2fa(&user.email, jar).await
+    handle_no_2fa(&end_point.email, jar).await
 }
 
 async fn handle_no_2fa(
@@ -40,7 +62,7 @@ async fn handle_no_2fa(
     jar: CookieJar,
 ) -> (
     CookieJar,
-    Result<(StatusCode, Json<LoginResponse>), AuthAPIError>,
+    Result<(StatusCode, Json<LoginResponse>), RouterError>,
 ) {
     // let auth_cookie = match generate_auth_cookie(email) {
     //     Ok(cookie) => cookie,

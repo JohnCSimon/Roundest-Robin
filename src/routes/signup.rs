@@ -8,17 +8,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, Endpoint, Password},
+    domain::{RouterError, Email, Endpoint, Password},
 };
 
 pub async fn signup(
     State(state): State<AppState>,
     Json(request): Json<SignupRequest>,
-) -> Result<impl IntoResponse, AuthAPIError> {
+) -> Result<impl IntoResponse, RouterError> {
     let email =
-        Email::parse(request.email.clone()).map_err(|_| AuthAPIError::InvalidCredentials)?;
+        Email::parse(request.email.clone()).map_err(|_| RouterError::InvalidCredentials)?;
     let password =
-        Password::parse(request.password.clone()).map_err(|_| AuthAPIError::InvalidCredentials)?;
+        Password::parse(request.password.clone()).map_err(|_| RouterError::InvalidCredentials)?;
 
     let uri = uri::Uri::from_static("http://example.com");
     let user = Endpoint::new(uri, email, password, request.requires_2fa);
@@ -26,11 +26,11 @@ pub async fn signup(
     let mut user_store = state.endpoint_store.write().await;
 
     if user_store.get_next_endpoint().await.is_ok() {
-        return Err(AuthAPIError::UserAlreadyExists);
+        return Err(RouterError::UserAlreadyExists);
     }
 
     if user_store.add_endpoint(user).await.is_err() {
-        return Err(AuthAPIError::UnexpectedError);
+        return Err(RouterError::UnexpectedError);
     }
 
     let response = Json(SignupResponse {

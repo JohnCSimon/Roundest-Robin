@@ -1,5 +1,4 @@
 use auth_service::{utils::constants::JWT_COOKIE_NAME, ErrorResponse};
-use axum::http::Uri;
 
 use crate::helpers::{get_random_email, TestApp};
 

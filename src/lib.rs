@@ -2,14 +2,16 @@ use std::error::Error;
 
 use app_state::AppState;
 use axum::{
+    body::Body,
+    extract::{Request, State},
     http::{Method, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
     serve::Serve,
     Json, Router,
 };
-use domain::AuthAPIError;
-use routes::{login, signup};
+use domain::RouterError;
+use routes::{routeme, signup};
 use serde::{Deserialize, Serialize};
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
@@ -37,9 +39,10 @@ impl Application {
             .allow_origin(allowed_origins);
 
         let router = Router::new()
-            .nest_service("/", ServeDir::new("assets"))
-            .route("/signup", post(signup))
-            .route("/login", post(login))
+            // .nest_service("/", ServeDir::new("assets"))
+            // .route("/signup", post(signup))
+            // .route("/login", post(login))
+            .fallback(routeme)
             .with_state(app_state)
             .layer(cors);
 
@@ -61,19 +64,17 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
-impl IntoResponse for AuthAPIError {
+impl IntoResponse for RouterError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AuthAPIError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
-            AuthAPIError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
-            AuthAPIError::IncorrectCredentials => {
+            RouterError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
+            RouterError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
+            RouterError::IncorrectCredentials => {
                 (StatusCode::UNAUTHORIZED, "Incorrect credentials")
             }
-            AuthAPIError::MissingToken => (StatusCode::BAD_REQUEST, "Missing auth token"),
-            AuthAPIError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid auth token"),
-            AuthAPIError::UnexpectedError => {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
-            }
+            RouterError::MissingToken => (StatusCode::BAD_REQUEST, "Missing auth token"),
+            RouterError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid auth token"),
+            RouterError::UnexpectedError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error"),
         };
         let body = Json(ErrorResponse {
             error: error_message.to_string(),

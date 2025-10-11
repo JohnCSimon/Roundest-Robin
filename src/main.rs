@@ -8,9 +8,9 @@ use auth_service::{
 
 #[tokio::main]
 async fn main() {
-    let user_store = Arc::new(RwLock::new(HashmapEndpointStore::default()));
+    let endpoint_store = Arc::new(RwLock::new(HashmapEndpointStore::default()));
 
-    let app_state = AppState::new(user_store);
+    let app_state = AppState::new(endpoint_store);
 
     let app = Application::build(app_state, prod::APP_ADDRESS)
         .await
