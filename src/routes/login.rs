@@ -1,7 +1,7 @@
 use axum::{
     body::Body,
     extract::{Request, State},
-    http::StatusCode,
+    http::{StatusCode, Uri},
     response::IntoResponse,
     Json,
 };
@@ -18,20 +18,6 @@ pub async fn routeme(
     jar: CookieJar,
     request: Request<Body>,
 ) -> Result<impl IntoResponse, RouterError> {
-    // let password = match Password::parse(request.password) {
-    //     Ok(password) => password,
-    //     Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
-    // };
-
-    // let email = match Email::parse(request.email) {
-    //     Ok(email) => email,
-    //     Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
-    // };
-
-    // if user_store.validate_user(&email, &password).await.is_err() {
-    //     return (jar, Err(AuthAPIError::IncorrectCredentials));
-    // }
-
     print!("Routeme called with request: {}\n", request.uri());
 
     let endpoint_store = &state.endpoint_store.read().await;
@@ -40,12 +26,31 @@ pub async fn routeme(
         Ok(end_point) => end_point,
         Err(_) => return Err(RouterError::IncorrectCredentials),
     };
+    println!(
+        "Forwarding request to endpoint: {} {}",
+        end_point.uri,
+        request.uri()
+    );
 
     // Make HTTP request to the endpoint's URI
     let client = reqwest::Client::new();
 
+    let combined_uri_string = format!(
+        "{}{}",
+        end_point.uri,
+        request
+            .uri()
+            .path_and_query()
+            .map(|pq| pq.as_str())
+            .unwrap_or("")
+    );
+
+    let combined_uri: Uri = combined_uri_string
+        .parse()
+        .map_err(|_| RouterError::UnexpectedError)?;
+
     let response = match client
-        .get(end_point.uri.to_string())
+        .get(combined_uri_string)
         // .json(&request) // Forward the login request
         .send()
         .await
@@ -54,24 +59,7 @@ pub async fn routeme(
         Err(_) => return Err(RouterError::UnexpectedError),
     };
 
-    return Ok((StatusCode::OK, Json(response.text().await.unwrap())));
-}
-
-async fn handle_no_2fa(
-    email: &Email,
-    jar: CookieJar,
-) -> (
-    CookieJar,
-    Result<(StatusCode, Json<LoginResponse>), RouterError>,
-) {
-    // let auth_cookie = match generate_auth_cookie(email) {
-    //     Ok(cookie) => cookie,
-    //     Err(_) => return (jar, Err(AuthAPIError::UnexpectedError)),
-    // };
-
-    // let updated_jar = jar.add(auth_cookie);
-
-    (jar, Ok((StatusCode::OK, Json(LoginResponse::RegularAuth))))
+    Ok((StatusCode::OK, Json(response.text().await.unwrap())))
 }
 
 #[derive(Deserialize)]

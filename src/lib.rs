@@ -35,11 +35,6 @@ impl Application {
             "http://[YOUR_DROPLET_IP]:8000".parse()?,
         ];
 
-        let endpoint = Endpoint {
-            uri: "http://localhost:9000".parse()?,
-        };
-        app_state.endpoint_store.add_endpoint(endpoint).await;
-
         let cors = CorsLayer::new()
             .allow_methods([Method::GET, Method::POST])
             .allow_credentials(true)
