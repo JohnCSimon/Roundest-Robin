@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use super::{Email, Endpoint, Password};
+use super::{Email, Endpoint};
 
 #[async_trait::async_trait]
 pub trait EndpointStore {

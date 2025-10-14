@@ -1,0 +1,36 @@
+services:
+  static-site-7001:
+    build: .
+    ports:
+      - "7001:8000"
+    volumes:
+      - ./.:/app/static:ro
+    command: python -m http.server 8000 --directory /app/static --bind 0.0.0.0
+  static-site-7002:
+    build: .
+    ports:
+      - "7002:8000"
+    volumes:
+      - ./.:/app/static:ro
+    command: python -m http.server 8000 --directory /app/static --bind 0.0.0.0
+  static-site-7003:
+    build: .
+    ports:
+      - "7003:8000"
+    volumes:
+      - ./.:/app/static:ro
+    command: python -m http.server 8000 --directory /app/static --bind 0.0.0.0
+  static-site-7004:
+    build: .
+    ports:
+      - "7004:8000"
+    volumes:
+      - ./.:/app/static:ro
+    command: python -m http.server 8000 --directory /app/static --bind 0.0.0.0
+  static-site-7005:
+    build: .
+    ports:
+      - "7005:8000"
+    volumes:
+      - ./.:/app/static:ro
+    command: python -m http.server 8000 --directory /app/static --bind 0.0.0.0

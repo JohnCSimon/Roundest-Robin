@@ -13,24 +13,20 @@ use auth_service::{
 async fn main() {
     let endpoint_store = Arc::new(RwLock::new(HashmapEndpointStore::default()));
 
-    let endpoint = Endpoint {
-        uri: "http://localhost:9000".parse().unwrap(),
-    };
-    endpoint_store
-        .write()
-        .await
-        .add_endpoint(endpoint)
-        .await
-        .unwrap();
-    let endpoint = Endpoint {
-        uri: "http://localhost:9001".parse().unwrap(),
-    };
-    endpoint_store
-        .write()
-        .await
-        .add_endpoint(endpoint)
-        .await
-        .unwrap();
+    for port in 7000..=7005 {
+        let endpoint = Endpoint {
+            uri: format!("http://localhost:{}", port).parse().unwrap(),
+            count_success: 0,
+            count_failure: 0,
+        };
+
+        endpoint_store
+            .write()
+            .await
+            .add_endpoint(endpoint)
+            .await
+            .unwrap();
+    }
     let app_state = AppState::new(endpoint_store);
 
     let app = Application::build(app_state, prod::APP_ADDRESS)
