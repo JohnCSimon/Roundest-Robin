@@ -1,1 +1,64 @@
-<h1>birds</h1>
+<style>
+    /* huge fixed pixel size */
+    .huge-px {
+        width: 10000px;
+        height: 5000px;
+        background: lightblue;
+    }
+
+    /* full viewport height (useful for "fill screen") */
+    .full-vh {
+        width: 100%;
+        min-height: 100vh;
+        background: lightgreen;
+    }
+
+    /* relative to viewport (responsive extremely large) */
+    .huge-vw {
+        width: 100vw;
+        height: 300vh;
+        /* 3x viewport height */
+        background: lightcoral;
+    }
+
+    /* scale an element to be visually huge without changing layout size */
+    .scaled {
+        transform: scale(10);
+        transform-origin: top left;
+        background: pink;
+    }
+
+    /* ensure page can scroll to see a very large element */
+    html,
+    body {
+        height: 100%;
+        margin: 0;
+    }
+</style>
+<h1>Round Robin Bird Parade!</h1>
+<marquee>
+    <div style="font-size:20rem;">
+        🦃
+        🐔
+        🐓
+        🐣
+        🐤
+        🐥
+        🐦
+        🐧
+        🕊️
+        🦅
+        🦆
+        🦢
+        🦉
+        🦤
+        🪶
+        🦩
+        🦚
+        🦜
+        🪽
+        🐦‍⬛
+        🪿
+        🐦‍🔥
+    </div>
+</marquee>

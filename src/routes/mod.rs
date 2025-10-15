@@ -1,5 +1,3 @@
-mod login;
-mod signup;
+mod router;
 
-pub use login::*;
-pub use signup::*;
+pub use router::*;

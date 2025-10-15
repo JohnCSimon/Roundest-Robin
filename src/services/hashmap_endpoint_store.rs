@@ -1,4 +1,4 @@
-use crate::domain::{Email, Endpoint, EndpointStore, Password, UserStoreError};
+use crate::domain::{Endpoint, EndpointStore, EndpointStoreError};
 use axum::http::Uri;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -11,19 +11,23 @@ pub struct HashmapEndpointStore {
 
 #[async_trait::async_trait]
 impl EndpointStore for HashmapEndpointStore {
-    async fn add_endpoint(&mut self, endpoint: Endpoint) -> Result<(), UserStoreError> {
+    async fn add_endpoint(&mut self, endpoint: Endpoint) -> Result<(), EndpointStoreError> {
         if self.endpoints.contains_key(&endpoint.uri) {
-            return Err(UserStoreError::UserAlreadyExists);
+            return Err(EndpointStoreError::EndpointAlreadyExists);
         }
         self.endpoints.insert(endpoint.uri.clone(), endpoint);
         Ok(())
     }
 
-    async fn get_next_endpoint(&self) -> Result<Endpoint, UserStoreError> {
+    async fn get_all_endpoints(&self) -> Result<Vec<Endpoint>, EndpointStoreError> {
+        Ok(self.endpoints.values().cloned().collect())
+    }
+
+    async fn get_next_endpoint(&self) -> Result<Endpoint, EndpointStoreError> {
         let endpoints: Vec<_> = self.endpoints.values().collect();
 
         if endpoints.is_empty() {
-            return Err(UserStoreError::UserNotFound);
+            return Err(EndpointStoreError::UserNotFound);
         }
 
         let current_idx = self.current_index.fetch_add(1, Ordering::Relaxed);
@@ -42,10 +46,14 @@ mod tests {
         let mut endpoint_store = HashmapEndpointStore::default();
         let endpoint1 = Endpoint {
             uri: Uri::from_static("http://example.com"),
+            count_success: AtomicUsize::new(0).into(),
+            count_failure: AtomicUsize::new(0).into(),
         };
 
         let endpoint2 = Endpoint {
             uri: Uri::from_static("http://example-two.com"),
+            count_success: AtomicUsize::new(0).into(),
+            count_failure: AtomicUsize::new(0).into(),
         };
 
         // Test adding a new user
@@ -62,10 +70,14 @@ mod tests {
         let mut endpoint_store = HashmapEndpointStore::default();
         let endpoint1 = Endpoint {
             uri: Uri::from_static("http://example1.com"),
+            count_success: AtomicUsize::new(0).into(),
+            count_failure: AtomicUsize::new(0).into(),
         };
 
         let endpoint2 = Endpoint {
             uri: Uri::from_static("http://example2.com"),
+            count_success: AtomicUsize::new(0).into(),
+            count_failure: AtomicUsize::new(0).into(),
         };
 
         // Test getting endpoint from empty store
@@ -85,41 +97,5 @@ mod tests {
             "First: {:?}, Second: {:?}, Third: {:?}",
             first_endpoint, second_endpoint, third_endpoint
         );
-        // Should cycle back to first endpoint
-        // assert_eq!(first_endpoint.email, third_endpoint.email);
-        // assert_ne!(first_endpoint.email, second_endpoint.email);
     }
-
-    // #[tokio::test]
-    // async fn test_validate_user() {
-    //     let mut user_store = HashmapEndpointStore::default();
-    //     let email = Email::parse("test@example.com".to_owned()).unwrap();
-    //     let password = Password::parse("password".to_owned()).unwrap();
-
-    //     let user = Endpoint {
-    //         email: email.clone(),
-    //         password: password.clone(),
-    //         requires_2fa: false,
-    //     };
-
-    //     // Test validating a user that exists with correct password
-    //     user_store.endpoints.insert(email.clone(), user.clone());
-    //     let result = user_store.validate_user(&email, &password).await;
-    //     assert_eq!(result, Ok(()));
-
-    //     // Test validating a user that exists with incorrect password
-    //     let wrong_password = Password::parse("wrongpassword".to_owned()).unwrap();
-    //     let result = user_store.validate_user(&email, &wrong_password).await;
-    //     assert_eq!(result, Err(UserStoreError::InvalidCredentials));
-
-    //     // Test validating a user that doesn't exist
-    //     let result = user_store
-    //         .validate_user(
-    //             &Email::parse("nonexistent@example.com".to_string()).unwrap(),
-    //             &password,
-    //         )
-    //         .await;
-
-    //     assert_eq!(result, Err(UserStoreError::UserNotFound));
-    // }
 }

@@ -2,20 +2,18 @@ use std::error::Error;
 
 use app_state::AppState;
 use axum::{
-    body::Body,
-    extract::{Request, State},
     http::{Method, StatusCode},
     response::{IntoResponse, Response},
-    routing::post,
+    routing::get,
     serve::Serve,
     Json, Router,
 };
 use domain::RouterError;
-use routes::{routeme, signup};
+use routes::routeme;
 use serde::{Deserialize, Serialize};
-use tower_http::{cors::CorsLayer, services::ServeDir};
+use tower_http::cors::CorsLayer;
 
-use crate::domain::{Email, Endpoint};
+use crate::routes::print_stats;
 
 pub mod app_state;
 pub mod domain;
@@ -41,9 +39,7 @@ impl Application {
             .allow_origin(allowed_origins);
 
         let router = Router::new()
-            // .nest_service("/", ServeDir::new("assets"))
-            // .route("/signup", post(signup))
-            // .route("/login", post(login))
+            .route("/printstats", get(print_stats))
             .fallback(routeme)
             .with_state(app_state)
             .layer(cors);

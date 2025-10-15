@@ -1,21 +1,17 @@
 use axum::{
     body::Body,
     extract::{Request, State},
-    http::{StatusCode, Uri},
+    http::StatusCode,
     response::IntoResponse,
     Json,
 };
-use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    app_state::AppState,
-    domain::{Email, Password, RouterError},
-};
+use crate::{app_state::AppState, domain::RouterError};
 
+// TODO: this thing doesn't properly pass along the request body etc.
 pub async fn routeme(
     State(state): State<AppState>,
-    jar: CookieJar,
     request: Request<Body>,
 ) -> Result<impl IntoResponse, RouterError> {
     print!("Routeme called with request: {}\n", request.uri());
@@ -45,27 +41,53 @@ pub async fn routeme(
             .unwrap_or("")
     );
 
-    let combined_uri: Uri = combined_uri_string
-        .parse()
-        .map_err(|_| RouterError::UnexpectedError)?;
-
     let response = match client
         .get(combined_uri_string)
         // .json(&request) // Forward the login request
         .send()
         .await
     {
-        Ok(response) => response,
-        Err(_) => return Err(RouterError::UnexpectedError),
+        Ok(response) => {
+            end_point.incr_success();
+            response
+        }
+        Err(_) => {
+            end_point.incr_failure();
+            return Err(RouterError::UnexpectedError);
+        }
     };
 
     Ok((StatusCode::OK, Json(response.text().await.unwrap())))
 }
 
-#[derive(Deserialize)]
-pub struct LoginRequest {
-    email: String,
-    password: String,
+pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoResponse, RouterError> {
+    let endpoint_store = &state.endpoint_store.read().await;
+
+    let endpoints = endpoint_store.get_all_endpoints().await.unwrap();
+
+    let stats: Vec<EndpointStats> = endpoints
+        .into_iter()
+        .map(|ep| EndpointStats {
+            uri: ep.uri.to_string(),
+            count_success: ep
+                .count_success
+                .load(std::sync::atomic::Ordering::Relaxed)
+                .to_string(),
+            count_failure: ep
+                .count_failure
+                .load(std::sync::atomic::Ordering::Relaxed)
+                .to_string(),
+        })
+        .collect();
+
+    Ok((StatusCode::OK, Json(stats)))
+}
+
+#[derive(Debug, Serialize)]
+pub struct EndpointStats {
+    pub uri: String,
+    pub count_success: String,
+    pub count_failure: String,
 }
 
 #[derive(Debug, Serialize)]

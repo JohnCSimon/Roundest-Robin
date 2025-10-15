@@ -6,3 +6,5 @@ pub enum RouterError {
     InvalidToken,
     UnexpectedError,
 }
+
+// TODO: these need to be specific to the router
