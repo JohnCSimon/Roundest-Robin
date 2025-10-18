@@ -19,8 +19,13 @@ pub async fn routeme(
     let endpoint_store = &state.endpoint_store.read().await;
 
     let end_point = match endpoint_store.get_next_endpoint().await {
-        Ok(end_point) => end_point,
-        Err(_) => return Err(RouterError::IncorrectCredentials),
+        Ok(end_point) => {
+            end_point.increase_concurrent_connection_count();
+            end_point
+        }
+        Err(_) => {
+            return Err(RouterError::IncorrectCredentials);
+        }
     };
     println!(
         "Forwarding request to endpoint: {} {}",
@@ -48,10 +53,12 @@ pub async fn routeme(
         .await
     {
         Ok(response) => {
+            end_point.decrease_concurrent_connection_count();
             end_point.incr_success();
             response
         }
         Err(_) => {
+            end_point.decrease_concurrent_connection_count();
             end_point.incr_failure();
             return Err(RouterError::UnexpectedError);
         }
@@ -77,6 +84,10 @@ pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoRespo
                 .count_failure
                 .load(std::sync::atomic::Ordering::Relaxed)
                 .to_string(),
+            count_concurrent_connections: ep
+                .count_concurrent_connections
+                .load(std::sync::atomic::Ordering::SeqCst)
+                .to_string(),
         })
         .collect();
 
@@ -88,6 +99,7 @@ pub struct EndpointStats {
     pub uri: String,
     pub count_success: String,
     pub count_failure: String,
+    pub count_concurrent_connections: String,
 }
 
 #[derive(Debug, Serialize)]

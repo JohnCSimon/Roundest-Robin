@@ -1,4 +1,4 @@
-use std::sync::{atomic::AtomicUsize, Arc};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use auth_service::{
@@ -13,12 +13,10 @@ use auth_service::{
 async fn main() {
     let endpoint_store = Arc::new(RwLock::new(HashmapEndpointStore::default()));
 
-    for port in 7000..=7005 {
-        let endpoint = Endpoint {
-            uri: format!("http://localhost:{}", port).parse().unwrap(),
-            count_success: Arc::new(AtomicUsize::new(0)),
-            count_failure: Arc::new(AtomicUsize::new(0)),
-        };
+    for port in 7001..=7005 {
+        // PURELY FOR TESTING PURPOSES - MAKE THIS REAL
+        let uri = format!("http://localhost:{}", port).parse().unwrap();
+        let endpoint = Endpoint::new(uri);
 
         endpoint_store
             .write()

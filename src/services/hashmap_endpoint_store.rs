@@ -48,12 +48,14 @@ mod tests {
             uri: Uri::from_static("http://example.com"),
             count_success: AtomicUsize::new(0).into(),
             count_failure: AtomicUsize::new(0).into(),
+            count_concurrent_connections: AtomicUsize::new(0).into(),
         };
 
         let endpoint2 = Endpoint {
             uri: Uri::from_static("http://example-two.com"),
             count_success: AtomicUsize::new(0).into(),
             count_failure: AtomicUsize::new(0).into(),
+            count_concurrent_connections: AtomicUsize::new(0).into(),
         };
 
         // Test adding a new user
@@ -72,12 +74,14 @@ mod tests {
             uri: Uri::from_static("http://example1.com"),
             count_success: AtomicUsize::new(0).into(),
             count_failure: AtomicUsize::new(0).into(),
+            count_concurrent_connections: AtomicUsize::new(0).into(),
         };
 
         let endpoint2 = Endpoint {
             uri: Uri::from_static("http://example2.com"),
             count_success: AtomicUsize::new(0).into(),
             count_failure: AtomicUsize::new(0).into(),
+            count_concurrent_connections: AtomicUsize::new(0).into(),
         };
 
         // Test getting endpoint from empty store
