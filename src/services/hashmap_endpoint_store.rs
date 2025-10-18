@@ -27,12 +27,16 @@ impl EndpointStore for HashmapEndpointStore {
         let endpoints: Vec<_> = self.endpoints.values().collect();
 
         if endpoints.is_empty() {
-            return Err(EndpointStoreError::UserNotFound);
+            return Err(EndpointStoreError::NoEndpoints);
         }
 
+        if self.current_index.load(Ordering::Relaxed) == endpoints.len() {
+            self.current_index.store(0, Ordering::Relaxed);
+        }
         let current_idx = self.current_index.fetch_add(1, Ordering::Relaxed);
         let index = current_idx % endpoints.len();
 
+        print!("Selected endpoint index: {}\n", index);
         Ok(endpoints[index].clone())
     }
 }

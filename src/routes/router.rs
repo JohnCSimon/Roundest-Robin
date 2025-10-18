@@ -2,7 +2,7 @@ use axum::{
     body::Body,
     extract::{Request, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ pub async fn routeme(
     State(state): State<AppState>,
     request: Request<Body>,
 ) -> Result<impl IntoResponse, RouterError> {
-    print!("Routeme called with request: {}\n", request.uri());
+    // print!("Routeme called with request: {}\n", request.uri());
 
     let endpoint_store = &state.endpoint_store.read().await;
 
@@ -64,7 +64,15 @@ pub async fn routeme(
         }
     };
 
-    Ok((StatusCode::OK, Json(response.text().await.unwrap())))
+    let response_text = response.text().await.unwrap();
+    // this needs to pass the content-type and other headers too into what is returned form this function
+
+    let converted_response = Response::builder()
+        .header("content-type", "text/html; charset=utf-8")
+        .body(Body::from(response_text))
+        .unwrap();
+
+    Ok((StatusCode::OK, converted_response))
 }
 
 pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoResponse, RouterError> {

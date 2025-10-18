@@ -12,7 +12,7 @@ pub trait EndpointStore {
 #[derive(Debug, PartialEq)]
 pub enum EndpointStoreError {
     EndpointAlreadyExists,
-    UserNotFound,
+    NoEndpoints,
     InvalidCredentials,
     UnexpectedError,
 }
