@@ -9,13 +9,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{app_state::AppState, domain::RouterError};
 
-// TODO: this thing doesn't properly pass along the request body etc.
 pub async fn routeme(
     State(state): State<AppState>,
     request: Request<Body>,
 ) -> Result<impl IntoResponse, RouterError> {
-    // print!("Routeme called with request: {}\n", request.uri());
-
     let endpoint_store = &state.endpoint_store.read().await;
 
     let end_point = match endpoint_store.get_next_endpoint().await {
@@ -65,6 +62,8 @@ pub async fn routeme(
     };
 
     let response_text = response.text().await.unwrap();
+
+    // TODO: this thing doesn't properly pass along the request body etc.
     // this needs to pass the content-type and other headers too into what is returned form this function
 
     let converted_response = Response::builder()
@@ -94,7 +93,7 @@ pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoRespo
                 .to_string(),
             count_concurrent_connections: ep
                 .count_concurrent_connections
-                .load(std::sync::atomic::Ordering::SeqCst)
+                .load(std::sync::atomic::Ordering::Relaxed)
                 .to_string(),
         })
         .collect();

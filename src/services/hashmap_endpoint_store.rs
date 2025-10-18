@@ -30,14 +30,38 @@ impl EndpointStore for HashmapEndpointStore {
             return Err(EndpointStoreError::NoEndpoints);
         }
 
-        if self.current_index.load(Ordering::Relaxed) == endpoints.len() {
-            self.current_index.store(0, Ordering::Relaxed);
-        }
-        let current_idx = self.current_index.fetch_add(1, Ordering::Relaxed);
-        let index = current_idx % endpoints.len();
+        let index = self.lowest_connection_index_selection();
+        // let index = self.round_robin_index_selection(endpoints.len());
 
         print!("Selected endpoint index: {}\n", index);
         Ok(endpoints[index].clone())
+    }
+}
+
+impl HashmapEndpointStore {
+    fn lowest_connection_index_selection(&self) -> usize {
+        // find the enumerated endpoint with the minimum concurrent connections
+
+        self.endpoints
+            .values()
+            .enumerate()
+            .min_by_key(|(_, ep)| ep.count_concurrent_connections.load(Ordering::Relaxed))
+            .map(|(i, _)| i)
+            .unwrap_or(0)
+    }
+
+    fn round_robin_index_selection(&self, len: usize) -> usize {
+        if len == 0 {
+            return 0;
+        }
+
+        // keep the counter bounded to avoid unbounded growth
+        if self.current_index.load(Ordering::Relaxed) >= len {
+            self.current_index.store(0, Ordering::Relaxed);
+        }
+
+        let current_idx = self.current_index.fetch_add(1, Ordering::Relaxed);
+        current_idx % len
     }
 }
 
