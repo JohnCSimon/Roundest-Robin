@@ -45,17 +45,13 @@ impl HashmapEndpointStore {
         self.endpoints
             .values()
             .enumerate()
+            .filter(|x| x.1.active_server.load(Ordering::Relaxed)) // only consider active servers
             .min_by_key(|(_, ep)| ep.count_concurrent_connections.load(Ordering::Relaxed))
             .map(|(i, _)| i)
             .unwrap_or(0)
     }
 
     fn round_robin_index_selection(&self, len: usize) -> usize {
-        if len == 0 {
-            return 0;
-        }
-
-        // keep the counter bounded to avoid unbounded growth
         if self.current_index.load(Ordering::Relaxed) >= len {
             self.current_index.store(0, Ordering::Relaxed);
         }
@@ -67,24 +63,16 @@ impl HashmapEndpointStore {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::AtomicBool;
+
     use super::*;
 
     #[tokio::test]
     async fn test_add_endpoint() {
         let mut endpoint_store = HashmapEndpointStore::default();
-        let endpoint1 = Endpoint {
-            uri: Uri::from_static("http://example.com"),
-            count_success: AtomicUsize::new(0).into(),
-            count_failure: AtomicUsize::new(0).into(),
-            count_concurrent_connections: AtomicUsize::new(0).into(),
-        };
 
-        let endpoint2 = Endpoint {
-            uri: Uri::from_static("http://example-two.com"),
-            count_success: AtomicUsize::new(0).into(),
-            count_failure: AtomicUsize::new(0).into(),
-            count_concurrent_connections: AtomicUsize::new(0).into(),
-        };
+        let endpoint1 = Endpoint::new(Uri::from_static("http://example.com"));
+        let endpoint2 = Endpoint::new(Uri::from_static("http://example-two.com"));
 
         // Test adding a new user
         let result = endpoint_store.add_endpoint(endpoint1).await;
@@ -98,27 +86,16 @@ mod tests {
     #[tokio::test]
     async fn test_get_endpoint() {
         let mut endpoint_store = HashmapEndpointStore::default();
-        let endpoint1 = Endpoint {
-            uri: Uri::from_static("http://example1.com"),
-            count_success: AtomicUsize::new(0).into(),
-            count_failure: AtomicUsize::new(0).into(),
-            count_concurrent_connections: AtomicUsize::new(0).into(),
-        };
-
-        let endpoint2 = Endpoint {
-            uri: Uri::from_static("http://example2.com"),
-            count_success: AtomicUsize::new(0).into(),
-            count_failure: AtomicUsize::new(0).into(),
-            count_concurrent_connections: AtomicUsize::new(0).into(),
-        };
+        let endpoint1 = Endpoint::new(Uri::from_static("http://example.com"));
+        let endpoint2 = Endpoint::new(Uri::from_static("http://example-two.com"));
 
         // Test getting endpoint from empty store
         let result = endpoint_store.get_next_endpoint().await;
         assert!(result.is_err());
 
         // Add endpoints
-        let _ = endpoint_store.add_endpoint(endpoint1.clone()).await;
-        let _ = endpoint_store.add_endpoint(endpoint2.clone()).await;
+        let _ = endpoint_store.add_endpoint(endpoint1).await;
+        let _ = endpoint_store.add_endpoint(endpoint2).await;
 
         // Test that we get different endpoints on successive calls
         let first_endpoint = endpoint_store.get_next_endpoint().await.unwrap();
