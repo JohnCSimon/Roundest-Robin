@@ -95,6 +95,10 @@ pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoRespo
                 .count_concurrent_connections
                 .load(std::sync::atomic::Ordering::Relaxed)
                 .to_string(),
+            active_server: ep
+                .active_server
+                .load(std::sync::atomic::Ordering::Relaxed)
+                .to_string(),
         })
         .collect();
 
@@ -107,6 +111,7 @@ pub struct EndpointStats {
     pub count_success: String,
     pub count_failure: String,
     pub count_concurrent_connections: String,
+    pub active_server: String,
 }
 
 #[derive(Debug, Serialize)]

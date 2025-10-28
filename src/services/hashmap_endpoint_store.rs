@@ -24,46 +24,52 @@ impl EndpointStore for HashmapEndpointStore {
     }
 
     async fn get_next_endpoint(&self) -> Result<Endpoint, EndpointStoreError> {
-        let endpoints: Vec<_> = self.endpoints.values().collect();
+        // filter for active servers
+        let active_endpoints: Vec<_> = self
+            .endpoints
+            .values()
+            .filter(|ep| ep.active_server.load(Ordering::Relaxed))
+            .collect();
 
-        if endpoints.is_empty() {
+        if active_endpoints.is_empty() {
             return Err(EndpointStoreError::NoEndpoints);
         }
 
-        let index = self.lowest_connection_index_selection();
-        // let index = self.round_robin_index_selection(endpoints.len());
+        // let selected_endpoint = self.lowest_connection_index_selection();
+        let selected_endpoint = self.round_robin_index_selection(active_endpoints);
 
-        print!("Selected endpoint index: {}\n", index);
-        Ok(endpoints[index].clone())
+        print!("Selected endpoint index: {}\n", selected_endpoint.uri);
+        Ok(selected_endpoint.clone())
     }
 }
 
 impl HashmapEndpointStore {
-    fn lowest_connection_index_selection(&self) -> usize {
+    fn lowest_connection_index_selection(&self) -> &Endpoint {
         // find the enumerated endpoint with the minimum concurrent connections
 
-        self.endpoints
+        let x = self
+            .endpoints
             .values()
             .enumerate()
-            .filter(|x| x.1.active_server.load(Ordering::Relaxed)) // only consider active servers
             .min_by_key(|(_, ep)| ep.count_concurrent_connections.load(Ordering::Relaxed))
-            .map(|(i, _)| i)
-            .unwrap_or(0)
+            .map(|(_, j)| j)
+            .unwrap();
+        x
     }
 
-    fn round_robin_index_selection(&self, len: usize) -> usize {
-        if self.current_index.load(Ordering::Relaxed) >= len {
+    fn round_robin_index_selection(&self, active_endpoints: Vec<&Endpoint>) -> Endpoint {
+        if self.current_index.load(Ordering::Relaxed) >= active_endpoints.len() {
             self.current_index.store(0, Ordering::Relaxed);
         }
 
         let current_idx = self.current_index.fetch_add(1, Ordering::Relaxed);
-        current_idx % len
+        active_endpoints[current_idx % active_endpoints.len()].clone()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::atomic::AtomicBool;
+    use std::sync::{atomic::AtomicBool, Arc};
 
     use super::*;
 
@@ -97,7 +103,7 @@ mod tests {
         let _ = endpoint_store.add_endpoint(endpoint1).await;
         let _ = endpoint_store.add_endpoint(endpoint2).await;
 
-        // Test that we get different endpoints on successive calls
+        // Test that we get different endpoints on successive calls - round robin 1, 0, 1
         let first_endpoint = endpoint_store.get_next_endpoint().await.unwrap();
         let second_endpoint = endpoint_store.get_next_endpoint().await.unwrap();
         let third_endpoint = endpoint_store.get_next_endpoint().await.unwrap();
@@ -106,5 +112,43 @@ mod tests {
             "First: {:?}, Second: {:?}, Third: {:?}",
             first_endpoint, second_endpoint, third_endpoint
         );
+
+        assert_eq!(
+            first_endpoint.uri,
+            Uri::from_static("http://example-two.com")
+        );
+        assert_eq!(second_endpoint.uri, Uri::from_static("http://example.com"));
+        assert_eq!(
+            third_endpoint.uri,
+            Uri::from_static("http://example-two.com")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_endpoint_failed_server() {
+        let mut endpoint_store = HashmapEndpointStore::default();
+        let endpoint1 = Endpoint {
+            uri: Uri::from_static("http://example.com"),
+            count_success: Default::default(),
+            count_failure: Default::default(),
+            count_concurrent_connections: Default::default(),
+            active_server: Arc::new(AtomicBool::new(false)), // inactive server
+        };
+
+        let endpoint2 = Endpoint {
+            uri: Uri::from_static("http://example-two.com"),
+            count_success: Default::default(),
+            count_failure: Default::default(),
+            count_concurrent_connections: Default::default(),
+            active_server: Arc::new(AtomicBool::new(false)), // inactive server
+        };
+
+        // Add endpoint
+        let _ = endpoint_store.add_endpoint(endpoint1).await;
+        let _ = endpoint_store.add_endpoint(endpoint2).await;
+
+        // Test that we get error when all servers are inactive
+        let result = endpoint_store.get_next_endpoint().await;
+        assert!(result.is_err());
     }
 }
