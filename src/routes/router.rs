@@ -77,6 +77,8 @@ pub async fn routeme(
 pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoResponse, RouterError> {
     let endpoint_store = &state.endpoint_store.read().await;
 
+    // let container_stats = crate::domain::get_docker_stats().await;
+
     let endpoints = endpoint_store.get_all_endpoints().await.unwrap();
 
     let stats: Vec<EndpointStats> = endpoints
