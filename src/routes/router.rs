@@ -77,10 +77,8 @@ pub async fn routeme(
 pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoResponse, RouterError> {
     let endpoint_store = &state.endpoint_store.read().await;
 
-    // let container_stats = crate::domain::get_docker_stats().await;
-
     let endpoints = endpoint_store.get_all_endpoints().await.unwrap();
-
+    let container_stats = crate::domain::get_docker_stats().await.unwrap();
     let stats: Vec<EndpointStats> = endpoints
         .into_iter()
         .map(|ep| EndpointStats {
@@ -101,6 +99,24 @@ pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoRespo
                 .active_server
                 .load(std::sync::atomic::Ordering::Relaxed)
                 .to_string(),
+            cpu_percentage: container_stats
+                .get(&ep.uri.to_string())
+                .map_or(0.0, |stats| stats.cpu_percentage),
+            memory_usage: container_stats
+                .get(&ep.uri.to_string())
+                .map_or(0, |stats| stats.memory_usage),
+            memory_limit: container_stats
+                .get(&ep.uri.to_string())
+                .map_or(0, |stats| stats.memory_limit),
+            memory_percentage: container_stats
+                .get(&ep.uri.to_string())
+                .map_or(0.0, |stats| stats.memory_percentage),
+            network_rx_bytes: container_stats
+                .get(&ep.uri.to_string())
+                .map_or(0, |stats| stats.network_rx_bytes),
+            network_tx_bytes: container_stats
+                .get(&ep.uri.to_string())
+                .map_or(0, |stats| stats.network_tx_bytes),
         })
         .collect();
 
@@ -114,6 +130,12 @@ pub struct EndpointStats {
     pub count_failure: String,
     pub count_concurrent_connections: String,
     pub active_server: String,
+    pub cpu_percentage: f64,
+    pub memory_usage: u64,
+    pub memory_limit: u64,
+    pub memory_percentage: f64,
+    pub network_rx_bytes: u64,
+    pub network_tx_bytes: u64,
 }
 
 #[derive(Debug, Serialize)]

@@ -5,13 +5,13 @@ use bytesize::ByteSize;
 use futures_util::StreamExt;
 use std::collections::HashMap;
 
-struct DockerStats {
-    cpu_percentage: f64,
-    memory_usage: u64,
-    memory_limit: u64,
-    memory_percentage: f64,
-    network_rx_bytes: u64,
-    network_tx_bytes: u64,
+pub struct DockerStats {
+    pub cpu_percentage: f64,
+    pub memory_usage: u64,
+    pub memory_limit: u64,
+    pub memory_percentage: f64,
+    pub network_rx_bytes: u64,
+    pub network_tx_bytes: u64,
 }
 
 pub async fn get_docker_stats() -> Result<HashMap<String, DockerStats>, Box<dyn std::error::Error>>
@@ -33,8 +33,13 @@ pub async fn get_docker_stats() -> Result<HashMap<String, DockerStats>, Box<dyn 
     let mut container_stats: HashMap<String, DockerStats> = HashMap::new();
     for container in running.iter() {
         let result = print_stats_per_container(container, &docker).await?;
-        let container_id = container.id.as_ref().unwrap().to_string();
-        container_stats.insert(container_id, result);
+        let port = container
+            .image
+            .as_ref()
+            .map(|img| img.split('-').last().unwrap_or(""))
+            .unwrap_or("");
+        let url = format!("http://localhost:{}/", port);
+        container_stats.insert(url, result);
     }
 
     Ok(container_stats)
@@ -43,7 +48,7 @@ pub async fn get_docker_stats() -> Result<HashMap<String, DockerStats>, Box<dyn 
 async fn print_stats_per_container(
     first: &ContainerSummary,
     docker: &Docker,
-) -> Result<(DockerStats), Box<dyn std::error::Error>> {
+) -> Result<DockerStats, Box<dyn std::error::Error>> {
     let binding = first.id.clone().unwrap();
     let container_id = first.id.as_ref().unwrap_or(&binding);
     // Docker gives long IDs; name is often easier to read:
