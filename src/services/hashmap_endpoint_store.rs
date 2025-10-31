@@ -41,6 +41,32 @@ impl EndpointStore for HashmapEndpointStore {
         print!("Selected endpoint index: {}\n", selected_endpoint.uri);
         Ok(selected_endpoint.clone())
     }
+
+    async fn check_for_dead_servers(&self) -> () {
+        // only check once the seconds on the clock are a multiple of 5
+        // let current_time = tokio::time::Instant::now();
+        // if !current_time.elapsed().as_secs().is_multiple_of(5) {
+        //     return;
+        // }
+
+        // iterate through endpoints whose are still active
+
+        for endpoint in self.endpoints.values() {
+            if !endpoint.active_server.load(Ordering::Relaxed) {
+                continue;
+            }
+
+            // Simple health check logic: if failure count exceeds success count by a threshold, deactivate
+            let success_count = endpoint.success_count();
+            let failure_count = endpoint.failure_count();
+
+            // if ratio of failures to successes exceeds 10%, deactivate
+            if success_count > 0 && failure_count > success_count / 10 {
+                endpoint.deactivate();
+                println!("****** Deactivated endpoint: {:?}\n", endpoint.uri);
+            }
+        }
+    }
 }
 
 impl HashmapEndpointStore {

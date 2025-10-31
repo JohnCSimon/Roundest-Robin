@@ -104,20 +104,20 @@ async fn print_stats_per_container(
     //
     // 5. Print it.
     //
-    println!("\n=== Live stats ===");
-    println!("Name:            {}", display_name);
-    println!("CPU usage:       {:.2}%", cpu_pct);
-    println!(
-        "Memory usage:    {} / {} ({:.2}%)",
-        ByteSize(mem_usage),
-        ByteSize(mem_limit),
-        pct(mem_usage, mem_limit),
-    );
-    println!(
-        "Network I/O:     ↓ {} / ↑ {}",
-        ByteSize(rx_bytes),
-        ByteSize(tx_bytes),
-    );
+    // println!("\n=== Live stats ===");
+    // println!("Name:            {}", display_name);
+    // println!("CPU usage:       {:.2}%", cpu_pct);
+    // println!(
+    //     "Memory usage:    {} / {} ({:.2}%)",
+    //     ByteSize(mem_usage),
+    //     ByteSize(mem_limit),
+    //     pct(mem_usage, mem_limit),
+    // );
+    // println!(
+    //     "Network I/O:     ↓ {} / ↑ {}",
+    //     ByteSize(rx_bytes),
+    //     ByteSize(tx_bytes),
+    // );
 
     let stats = DockerStats {
         cpu_percentage: cpu_pct,

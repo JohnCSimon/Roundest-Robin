@@ -15,6 +15,8 @@ pub async fn routeme(
 ) -> Result<impl IntoResponse, RouterError> {
     let endpoint_store = &state.endpoint_store.read().await;
 
+    // check for dead servers before selecting next endpoint
+    endpoint_store.check_for_dead_servers().await;
     let end_point = match endpoint_store.get_next_endpoint().await {
         Ok(end_point) => {
             end_point.increase_concurrent_connection_count();
@@ -83,40 +85,30 @@ pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoRespo
         .into_iter()
         .map(|ep| EndpointStats {
             uri: ep.uri.to_string(),
-            count_success: ep
-                .count_success
-                .load(std::sync::atomic::Ordering::Relaxed)
-                .to_string(),
-            count_failure: ep
-                .count_failure
-                .load(std::sync::atomic::Ordering::Relaxed)
-                .to_string(),
+            count_success: ep.count_success.load(std::sync::atomic::Ordering::Relaxed),
+            count_failure: ep.count_failure.load(std::sync::atomic::Ordering::Relaxed),
             count_concurrent_connections: ep
                 .count_concurrent_connections
-                .load(std::sync::atomic::Ordering::Relaxed)
-                .to_string(),
-            active_server: ep
-                .active_server
-                .load(std::sync::atomic::Ordering::Relaxed)
-                .to_string(),
+                .load(std::sync::atomic::Ordering::Relaxed),
+            active_server: ep.active_server.load(std::sync::atomic::Ordering::Relaxed),
             cpu_percentage: container_stats
                 .get(&ep.uri.to_string())
                 .map_or(0.0, |stats| stats.cpu_percentage),
             memory_usage: container_stats
                 .get(&ep.uri.to_string())
-                .map_or(0, |stats| stats.memory_usage),
+                .map_or(0, |stats| stats.memory_usage.try_into().unwrap()),
             memory_limit: container_stats
                 .get(&ep.uri.to_string())
-                .map_or(0, |stats| stats.memory_limit),
+                .map_or(0, |stats| stats.memory_limit.try_into().unwrap()),
             memory_percentage: container_stats
                 .get(&ep.uri.to_string())
                 .map_or(0.0, |stats| stats.memory_percentage),
             network_rx_bytes: container_stats
                 .get(&ep.uri.to_string())
-                .map_or(0, |stats| stats.network_rx_bytes),
+                .map_or(0, |stats| stats.network_rx_bytes.try_into().unwrap()),
             network_tx_bytes: container_stats
                 .get(&ep.uri.to_string())
-                .map_or(0, |stats| stats.network_tx_bytes),
+                .map_or(0, |stats| stats.network_tx_bytes.try_into().unwrap()),
         })
         .collect();
 
@@ -126,16 +118,16 @@ pub async fn print_stats(State(state): State<AppState>) -> Result<impl IntoRespo
 #[derive(Debug, Serialize)]
 pub struct EndpointStats {
     pub uri: String,
-    pub count_success: String,
-    pub count_failure: String,
-    pub count_concurrent_connections: String,
-    pub active_server: String,
+    pub count_success: usize,
+    pub count_failure: usize,
+    pub count_concurrent_connections: usize,
+    pub active_server: bool,
     pub cpu_percentage: f64,
-    pub memory_usage: u64,
-    pub memory_limit: u64,
+    pub memory_usage: usize,
+    pub memory_limit: usize,
     pub memory_percentage: f64,
-    pub network_rx_bytes: u64,
-    pub network_tx_bytes: u64,
+    pub network_rx_bytes: usize,
+    pub network_tx_bytes: usize,
 }
 
 #[derive(Debug, Serialize)]
