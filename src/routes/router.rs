@@ -26,11 +26,11 @@ pub async fn routeme(
             return Err(RouterError::IncorrectCredentials);
         }
     };
-    println!(
-        "Forwarding request to endpoint: {} {}",
-        end_point.uri,
-        request.uri()
-    );
+    // println!(
+    //     "Forwarding request to endpoint: {} {}",
+    //     end_point.uri,
+    //     request.uri()
+    // );
 
     // Make HTTP request to the endpoint's URI
     let client = reqwest::Client::new();

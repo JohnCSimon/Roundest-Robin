@@ -38,7 +38,7 @@ impl EndpointStore for HashmapEndpointStore {
         // let selected_endpoint = self.lowest_connection_index_selection();
         let selected_endpoint = self.round_robin_index_selection(active_endpoints);
 
-        print!("Selected endpoint index: {}\n", selected_endpoint.uri);
+        // print!("Selected endpoint index: {}\n", selected_endpoint.uri);
         Ok(selected_endpoint.clone())
     }
 
@@ -63,6 +63,9 @@ impl EndpointStore for HashmapEndpointStore {
             // if ratio of failures to successes exceeds 10%, deactivate
             if success_count > 0 && failure_count > success_count / 10 {
                 endpoint.deactivate();
+                endpoint
+                    .count_concurrent_connections
+                    .store(0, Ordering::Relaxed);
                 println!("****** Deactivated endpoint: {:?}\n", endpoint.uri);
             }
         }

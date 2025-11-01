@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use auth_service::{
+use roundest_robin_router::{
     app_state::AppState,
     domain::{Endpoint, EndpointStore},
     services::hashmap_endpoint_store::HashmapEndpointStore,
